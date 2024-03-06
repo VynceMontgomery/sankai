@@ -1,7 +1,7 @@
 import { Card, VillageCard, KaijuCard, Token } from "./index.js";
 
 export const villageCards: Partial<VillageCard>[] = [{
-    // fix putting something in the warehouse once you empty it?
+    // seems OK
     cardName: 'Warehouse',
     playWhen: 'construction',
     actionName: 'initWarehouse',
@@ -9,6 +9,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     addDice: 0,
     forceShuffle: true,
 }, {
+    // TODO
     cardName: 'Decoy',
     playWhen: 'construction',
     actionName: 'initDecoy',
@@ -16,13 +17,16 @@ export const villageCards: Partial<VillageCard>[] = [{
     addDice: 0,
     // pawn: () => $.box.first(Token, 'decoy'),
 }, {
-    // fix: make sure you cn' use it on the same turn, and it doesn't offer being used when you can't use it
+    // seems OK, except that it highlights as playable whn it isn't playable.
+    // Or rather, the card is playable but the action it triggers isn't available
+    // Not sure how to shake that all the way forward.
     cardName: 'Radio',
     playWhen: 'construction',
     actionName: 'initRadio',
     description: 'Call for an airdrop',
     addDice: 0,
 }, {
+    // TODO
     cardName: 'Trap',
     playWhen: 'move',
     actionName: 'setTrap',
@@ -30,7 +34,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     addDice: 0,
     // pawn: () => $.box.first(Token, 'trap'),
 }, {
-    // supplies are buggy in general, test & report
+    // seems OK
     cardName: 'Supplies: Lumber',
     playWhen: 'construction',
     actionName: 'supplies',
@@ -59,19 +63,22 @@ export const villageCards: Partial<VillageCard>[] = [{
     description: 'Whatever you need',
     addDice: 0,
 }, {
+    // TODO should be easy
     cardName: 'Winch',
     playWhen: 'construction',
     actionName: 'applyWinch',
     description: 'Shift that over there',
     addDice: 0,
 }, {
+    // TODO
     cardName: 'Dawn',
     playWhen: 'endTurn',
     actionName: 'dawn',
-    description: 'It was pretty dark. But now...',
+    description: 'It got pretty dark. But now...',
     addDice: 0,
 }, {
-    // this one should be fun. 
+    // Mostly works
+    // has some very weird timing issues; game.followUp() does not work as expected?  and game.addDelay()?
     cardName: "Military Involvement",
     playWhen: 'now',
     actionName: 'militaryInvolvement',
@@ -79,7 +86,8 @@ export const villageCards: Partial<VillageCard>[] = [{
     addDice: 0,
     forceShuffle: true,
 }, {
-    // also fun
+    // TODO: also fun
+    // dodecoy first,this will build on that
     cardName: 'Bukibuki',
     playWhen: 'now',
     actionName: 'initBukibuki',
@@ -119,56 +127,64 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     description: "B is for Building, that's good enough for me!",
     addDice: 0,
 }, {
-    // should be easy
+    // looks good
     cardName: 'Entwined Fates',
     playWhen: 'rollDice',
     actionName: 'entwinedFates',
     description: "All for one and one for all",
     addDice: 0,
 }, {
+    // looks good
     cardName: 'Storm',
     playWhen: 'takeDie',
-    actionName: 'initStorm',
+    actionName: 'storm',
     description: "Everything is topsy turvy",
     addDice: 0,
     forceShuffle: true,
 }, {
+    // looks good, needs more testing
     cardName: 'Earthquake',
     playWhen: 'action',
     actionName: 'earthquake',
     description: "There may be doubt and remorse.",
     addDice: 0,
 }, {
+    // implemented, seems to work
     cardName: 'Hunger',
     playWhen: 'eat',
     actionName: 'eat',
     description: "Back for seconds.",
     addDice: 0,
-}, {    
+}, {
+    // looks good
     cardName: 'Tunnel',
     playWhen: 'action',
     actionName: 'tunnel',
     description: "I gotta get out of this place.",
     addDice: 0,
 }, {
+    // TODO
     cardName: 'Jump Stomp',
     playWhen: 'wreck',
     actionName: 'jumpStomp',
     description: "Mario would be proud",
     addDice: 0,
 }, {
+    // TODO
     cardName: 'Rampage',
     playWhen: 'action',
     actionName: 'initRampage',
     description: "My arms are too small to flip the table.",
     addDice: 0,
 }, {
+    // TODO
     cardName: 'Laser Vision',
     playWhen: 'action',
     actionName: 'initLaser',
     description: "I see all.",
     addDice: 0,
 }, {
+    // TODO
     cardName: 'Lightning Speed',
     playWhen: 'action',
     actionName: 'initSpeed',
