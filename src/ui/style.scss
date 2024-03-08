@@ -10,19 +10,23 @@
     background-color: burlywood;
   }
   .Block[data-kind='wall'] {
-    background-color: firebrick;
+    background-color: beige;
   }
   .Block[data-kind='room'] {
-    background-color: palegreen;
+    background-color: coral;
   }
   .Block[data-kind='building'] {
-    background-color: beige;
+    background-color: firebrick;
   }
   .Block[data-kind='tower'] {
     background-color: grey;
   }
   .Block[data-kind='fortress'] {
     background-color: white;
+  }
+
+  .Block[data-kind='wild'] {
+    background-color: orchid;
   }
 
   .Block.selected {
@@ -37,8 +41,32 @@
     border: .1em red;
   }
 
+  #village > div {
+    background-color: #fedcba98;
+  }
+
+  .Cell > div {
+    background-color: #89ab4567;
+  }
+
+  #appetiteTrack > div {
+    background-color: dimgrey;
+    border: solid .2rem darkred;
+    font-size: .5rem;
+  }
+
+  #tray > div {
+    background-color: forestgreen;
+    border: solid .2rem saddlebrown;
+    font-size: .5rem;
+  }
+
   .Token {
     perspective: 1000px;
+    font-size: 400%;
+    font-weight: 729;
+    text-align: center;
+    color: #eee;
 
     .flipper {
       width: 100%;
@@ -54,11 +82,11 @@
         width: 100%;
         height: 100%;
         border-radius: 50%;
-        border: .3em solid black;
+        border: .1rem solid black;
         backface-visibility: hidden;
 
         html.dark & {
-          border: .3em solid rgb(164, 164, 164);
+          border: .1rem solid rgb(164, 164, 164);
         }
       }
 
@@ -87,13 +115,65 @@
       html.dark & {
         background: rgb(13, 13, 115);
       }
+
+
   }
+
+    &[data-kind="Bukibuki"], 
+    &[data-kind="Harapeko"] {
+      font-size: 200%;
+    }
 
     &[data-color=red] .front {
       background: red;
       html.dark & {
         background: rgb(115, 13, 13);
       }
-    }
+    }    
   }
+
+  .VillageCard > div,
+  .KaijuCard > div {
+    border: solid .1rem #eee;
+    border-radius: .25rem;
+  }
+
+  .VillageCard.selectable > div,
+  .KaijuCard.selectable > div {
+    border: solid .1rem gold;
+    border-radius: .25rem;
+  }
+
+  .KaijuCard .front {
+    background: linear-gradient(to top left, var(--player-color), #999 50% 100%);
+    font-size: .75em;
+    text-align: center;
+  }
+
+  .KaijuCard .back {
+    background: linear-gradient(to bottom right, var(--player-color), #333);
+    padding-top: .5em;
+    font-size: 2.5em;
+    text-align: center;
+  }
+
+  .VillageCard .front {
+    background: linear-gradient(to top left, var(--player-color), #eee 50% 100%);
+    font-size: .75em;
+    text-align: center;
+  }
+
+  .VillageCard .back {
+    background: linear-gradient(to bottom right, var(--player-color), #fdb);
+    padding-top: .5em;
+    font-size: 2.5em;
+    text-align: center;
+  }
+
+  .selectable > * {
+    border: solid gold 0.1rem;
+    box-shadow: 0 0 0.2rem orange;
+  }
+
 }
+

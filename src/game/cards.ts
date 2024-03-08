@@ -86,8 +86,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     addDice: 0,
     forceShuffle: true,
 }, {
-    // TODO: also fun
-    // dodecoy first,this will build on that
+    // Done? needs testing, but basics seem to work
     cardName: 'Bukibuki',
     playWhen: 'now',
     actionName: 'initBukibuki',
@@ -148,6 +147,7 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     actionName: 'earthquake',
     description: "There may be doubt and remorse.",
     addDice: 0,
+    forceShuffle: true,
 }, {
     // implemented, seems to work
     cardName: 'Hunger',
