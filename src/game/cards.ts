@@ -163,21 +163,21 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     description: "I gotta get out of this place.",
     addDice: 0,
 }, {
-    // TODO
+    // looks good
     cardName: 'Jump Stomp',
     playWhen: 'wreck',
     actionName: 'jumpStomp',
     description: "Mario would be proud",
     addDice: 0,
 }, {
-    // TODO
+    // looks good
     cardName: 'Rampage',
     playWhen: 'action',
     actionName: 'initRampage',
     description: "My arms are too small to flip the table.",
     addDice: 0,
 }, {
-    // TODO
+    // done... too powerful?
     cardName: 'Laser Vision',
     playWhen: 'action',
     actionName: 'initLaser',
