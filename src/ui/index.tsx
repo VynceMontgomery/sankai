@@ -203,13 +203,13 @@ render(setup, {
 
     game.all('deck').layout(Card, {
       rows: {max: 1},
-      offsetColumn: {x: 5, y: 5},
+      offsetColumn: {x: 6, y: 2},
       margin: .25,
     });
 
     game.all('discard').layout(Card, {
       rows: {max: 1},
-      offsetColumn: {x: 3, y: 3},
+      offsetColumn: {x: 9, y: 3},
       haphazardly: 5,
       margin: .25,
     });
