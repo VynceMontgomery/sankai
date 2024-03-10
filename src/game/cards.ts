@@ -15,7 +15,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     actionName: 'initDecoy',
     description: 'Bait to lure Harapeko',
     addDice: 0,
-    // pawn: () => $.box.first(Token, 'decoy'),
+    // pawn: () => $.box.first(Token, 'Decoy'),
 }, {
     // seems OK, except that it highlights as playable whn it isn't playable.
     // Or rather, the card is playable but the action it triggers isn't available
@@ -29,10 +29,10 @@ export const villageCards: Partial<VillageCard>[] = [{
     // TODO
     cardName: 'Trap',
     playWhen: 'move',
-    actionName: 'setTrap',
+    actionName: 'trap',
     description: 'Catch Harapeko in a trap',
     addDice: 0,
-    // pawn: () => $.box.first(Token, 'trap'),
+    // pawn: () => $.box.first(Token, 'Trap'),
 }, {
     // seems OK
     cardName: 'Supplies: Lumber',
@@ -66,7 +66,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     // TODO should be easy
     cardName: 'Winch',
     playWhen: 'construction',
-    actionName: 'applyWinch',
+    actionName: 'winch',
     description: 'Shift that over there',
     addDice: 0,
 }, {
@@ -92,7 +92,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     actionName: 'initBukibuki',
     description: "A challenger appears.",
     addDice: 1,
-    // pawn: () => $.box.first(Token, 'bukibuki'),
+    // pawn: () => $.box.first(Token, 'Bukibuki'),
 }];
 
 
@@ -184,7 +184,7 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     description: "I see all.",
     addDice: 0,
 }, {
-    // TODO
+    // looks good
     cardName: 'Lightning Speed',
     playWhen: 'action',
     actionName: 'initSpeed',

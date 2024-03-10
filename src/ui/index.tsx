@@ -154,8 +154,8 @@ render(setup, {
       aspectRatio: 1,
       render: (t) => (
         <div className="flipper">
-          <div className="front">ぺこ</div>
-          <div className="back">ぺこ</div>
+          <div className="front">腹<br/>ぺこ</div>
+          <div className="back">腹 ぺこ</div>
         </div>
       )
     });
