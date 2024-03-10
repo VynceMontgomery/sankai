@@ -9,7 +9,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     addDice: 0,
     forceShuffle: true,
 }, {
-    // TODO
+    // seems OK
     cardName: 'Decoy',
     playWhen: 'construction',
     actionName: 'initDecoy',
@@ -17,16 +17,14 @@ export const villageCards: Partial<VillageCard>[] = [{
     addDice: 0,
     // pawn: () => $.box.first(Token, 'Decoy'),
 }, {
-    // seems OK, except that it highlights as playable whn it isn't playable.
-    // Or rather, the card is playable but the action it triggers isn't available
-    // Not sure how to shake that all the way forward.
+    // seems OK, but the code feels inelegant
     cardName: 'Radio',
     playWhen: 'construction',
     actionName: 'initRadio',
     description: 'Call for an airdrop',
     addDice: 0,
 }, {
-    // TODO
+    // untested
     cardName: 'Trap',
     playWhen: 'move',
     actionName: 'trap',
@@ -63,7 +61,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     description: 'Whatever you need',
     addDice: 0,
 }, {
-    // TODO should be easy
+    // seems OK
     cardName: 'Winch',
     playWhen: 'construction',
     actionName: 'winch',
@@ -141,7 +139,7 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     addDice: 0,
     forceShuffle: true,
 }, {
-    // looks good, needs more testing
+    // looks good
     cardName: 'Earthquake',
     playWhen: 'action',
     actionName: 'earthquake',
@@ -149,7 +147,7 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     addDice: 0,
     forceShuffle: true,
 }, {
-    // implemented, seems to work
+    // looks good
     cardName: 'Hunger',
     playWhen: 'eat',
     actionName: 'eat',
@@ -177,7 +175,7 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     description: "My arms are too small to flip the table.",
     addDice: 0,
 }, {
-    // done... too powerful?
+    // looks good
     cardName: 'Laser Vision',
     playWhen: 'action',
     actionName: 'initLaser',
