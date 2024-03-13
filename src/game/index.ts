@@ -28,6 +28,8 @@ export class SankaiPlayer extends Player<SankaiPlayer, SankaiGame> {
     if (this.my('deck')!.all(Card).length < count) {
       this.game.message(`{{ player }} is out of cards!`, {player: this});
     }
+
+    return this.my('deck')!.all(Card).length > 0;
   }
 
   shuffleDiscards () {
@@ -48,7 +50,7 @@ export class SankaiPlayer extends Player<SankaiPlayer, SankaiGame> {
 
   appetite (): BlockType {
     for (const food of SankaiGame.goods) {
-      if (this.my('appetiteTrack')!.all(Block, (b) => b.kind === food).length < 4) {
+      if (this.my('appetiteTrack')!.all(Block, (b) => b.kind === food).length < this.game.kaijuAppetiteSize) {
         return food;
       }
     }
@@ -58,14 +60,14 @@ export class SankaiPlayer extends Player<SankaiPlayer, SankaiGame> {
   isLured (): boolean {
     if ($.village.has(Token, 'Decoy')) {
       const decoy = $.village.first(Token, 'Decoy')!;
-      console.log(`have decoy at ${decoy.cell()!.row}, ${decoy.cell()!.column}`);
+      // console.log(`have decoy at ${decoy.cell()!.row}, ${decoy.cell()!.column}`);
       if (decoy.card!.has(Block, (b) => b.match(this.appetite()))) {
         const here = this.pawn!.cell()!;
         const there = decoy.cell()!;
         const walkables = here.walkableSteps(2);
         const range = Math.min(here.distanceTo(there)!, ...walkables.map((c) => c.distanceTo(there)!));
         const closers = walkables.filter((c) => c.distanceTo(there) === range);
-        console.log('Options: ', closers);
+        // console.log('Options: ', closers);
         return closers.length > 0;
       }
     }
@@ -133,6 +135,11 @@ class SankaiGame extends Game<SankaiPlayer, SankaiGame> {
    */
   phase: number = 1;
 
+  readonly boardSize = 6;
+  readonly projectSize = 3;
+  readonly kaijuAppetiteSize = 4;
+
+
   static goods: BlockType[] = ['lumber', 'wall', 'room', 'building', 'tower', 'fortress'];
   static size (item: string) {
     if (SankaiGame.goods.some((g) => g === item)) return SankaiGame.goods.indexOf(item as BlockType);
@@ -181,12 +188,12 @@ class SankaiGame extends Game<SankaiPlayer, SankaiGame> {
     return this.first('village')!.all(Block, kind ? {kind} : {});
   }
 
-  // STUB: think abotu this a little more. It works, bu it sucks. Cna we do better?
+  // STUB: think about this a little more. It works, but it sucks. Cna we do better?
   bukibuki () {
-    return {
-      card: this.villager()!.my('tableau')!.first(Card, 'Bukibuki'),
-      pawn: this.first(Token, 'Bukibuki'),
-    };
+    const card = this.villager()!.my('tableau')!.first(Card, 'Bukibuki');
+    const pawn = this.first(Token, 'Bukibuki');
+    const size = !!card ? Math.max(...card.all(Block).map((d) => d.size() || 0)) : undefined;
+    return {card, pawn, size};
   }
 
   bukibukiWalkable (): Cell[] {
@@ -219,11 +226,11 @@ export class Cell extends Space {
   column: number;
 
   isEdge() {
-    return ([1,6].includes(this.row) || [1,6].includes(this.column));
+    return ([1, this.game.boardSize].includes(this.row) || [1, this.game.boardSize].includes(this.column));
   }
 
   isCorner () {
-    return ([1,6].includes(this.row) && [1,6].includes(this.column));
+    return ([1, this.game.boardSize].includes(this.row) && [1, this.game.boardSize].includes(this.column));
   }
 
   hasStructure() {
@@ -440,7 +447,7 @@ export class Block extends Piece {
         const wreckage = $.box.last(Block, {kind: smallkind})!;
         wreckage.putInto(here);
         this.putInto($.box);
-      } else if (splashZone.length <= 2) {
+      } else if (splashZone.length <= this.game.projectSize - 1) {
         const smallkind = SankaiGame.goods[this.size() - 1];
         const wreckage = $.box.last(Block, {kind: smallkind})!;
         wreckage.putInto(here);
@@ -448,8 +455,8 @@ export class Block extends Piece {
         splashZone.forEach((c) => $.box.last(Block, {kind: smallkind})?.putInto(c));
       } else {
         this.game.followUp({
-          name: 'wreckSplash', 
-          player: this.game.kaiju(), 
+          name: 'wreckSplash',
+          player: this.game.kaiju(),
           args: {target: this, splashCandidates: splashZone},
         });
       }
@@ -459,14 +466,26 @@ export class Block extends Piece {
 }
 
 export class Card extends Piece {
-  cardName: string;
-  playWhen: string;
-  actionName: string;
+  cardName!: string;
+  playWhen!: string;
+  actionName!: string;
   actionArgs: Record<string, string> | undefined;
-  description: string;
+  flavorText: string;
+  description?: string;
   addDice: number = 0;
   forceShuffle: boolean = false;
+  dismissible: boolean = false;
   pawn: Token | undefined;
+
+  static canPlayMap: Record<string, (player: SankaiPlayer) => boolean> = {}; // = {'Radio': () => 1+3 > 2};
+
+  canPlay (player: SankaiPlayer): boolean {
+    // if (typeof Card.canPlayMap[this.cardName] === 'function') {
+      return Card.canPlayMap[this.cardName](player);
+    // } else {
+    //   return true;
+    // }
+  }
 }
 
 export class VillageCard extends Card {
@@ -524,7 +543,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
     hand.onEnter(Card, c => {
       if (c.playWhen === 'now') {
         console.log(`time to ${ c.actionName }`)
-        game.followUp({name: c.actionName, player: seat.player});
+        game.followUp({name: c.actionName, player: seat.player, args: {card: c}});
       }
     })
     // hand.onEnter(Block, b => console.log(`${hand.player} got a block of: ${ b.kind }`));
@@ -548,8 +567,8 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
   $.box.createMany(7, SankaiDie, 'die');
 
   $.village.createGrid({
-    rows: 6,
-    columns: 6,
+    rows: game.boardSize,
+    columns: game.boardSize,
     style: 'square'
   }, Cell, 'cell');
 
@@ -562,6 +581,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
   }));
 
   $.village.all(Cell).forEach((c) => c.onExit(KaijuToken, (t) => {
+
     if (c.has(Token, 'Trap')) {
       c.first(Token, 'Trap')!.putInto($.box);
       c.game.message(`Harapeko escapes the trap.`);
@@ -570,10 +590,20 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
   for (const card of villageCards) {
     $.box.create(VillageCard, card.cardName!, card);
+    if (typeof card.canPlay === 'function') {
+      Card.canPlayMap[card.cardName!] = card.canPlay;
+    } else { 
+      Card.canPlayMap[card.cardName!] = () => true;
+    }
   }
 
   for (const card of kaijuCards) {
     $.box.create(KaijuCard, card.cardName!, card);
+    if (typeof card.canPlay === 'function') {
+      Card.canPlayMap[card.cardName!] = card.canPlay;
+    } else { 
+      Card.canPlayMap[card.cardName!] = () => true;
+    }
   }
 
   for (const token of ['Bukibuki', 'Decoy', 'Trap'] as TokenType[]) {
@@ -651,16 +681,16 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       `{{player}} took a {{ blocktype }}.`
     ),
 
-    playCard: player => action<{when?: string}>({
+    playCard: player => action<{playWhen?: string}>({
       prompt: "play card?",
-      condition: ({when}) => player.my('hand')!.has(Card, {playWhen: when}),
+      condition: ({playWhen}) => player.my('hand')!.has(Card, {playWhen}, (c) => c.canPlay(player)),
     }).chooseOnBoard(
       'card',
-      ({when}) => player.my('hand')!.all(Card, {playWhen: when}),
+      ({playWhen}) => player.my('hand')!.all(Card, {playWhen}, (c) => c.canPlay(player)),
       { skipIf: 'never'},
-    ).do(({card}) => {
-      game.followUp({player, name: card.actionName});
-      player.my('hand')!.first(Card, card)?.putInto(player.my('discard')!);
+    ).do(({card, playWhen}) => {
+      if (card.actionName === 'eat') player.hasActed = false;
+      game.followUp({player, name: card.actionName, args: {card}});
     }),
 
     discard: player => action<{discard: number}>({
@@ -676,10 +706,13 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
     dismissOngoing: player => action({
       prompt: 'Dismiss any of your ongoing effects?',
-      condition: player.my('tableau')!.has(Card),
+      condition: player.my('tableau')!.has(Card, {dismissible: true})
+                && (player === game.villager() 
+                    || (player.my('tableau')!.all(Card).length > 1 
+                        && game.villager().my('hand')!.all(Card).length > 0)),
     }).chooseOnBoard(
       'toDiscard',
-      () => player.my('tableau')!.all(Card),
+      () => player.my('tableau')!.all(Card, {dismissible: true}),
     ).do(({toDiscard}) => {
       toDiscard.putInto(player.my('discard')!);
     }).message(`{{player}} dismissed {{toDiscard}}`),
@@ -693,6 +726,12 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       if (radio && !radio.has(Block)) {
         $.box.last(Block, {kind: 'wild'})!.putInto(radio);
       }
+
+      player.my('tableau')!.all(Card).forEach((c) => {
+        if (c.pawn && ! $.village.has(Token, c.pawn)) {
+          c.putInto(player.my('discard')!);
+        }
+      });
 
       player.hasActed = false;
       player.usedBonus = false;
@@ -713,56 +752,58 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
     // phase-queued card play actions. Maybe find a way to roll these into one. update: see playCard
 
-    rollDiceCard: player => action({
-      prompt: `play a card before taking a die?`,
-      condition: player.my('hand')!.has(Card, {playWhen: 'rollDice'}),
-    }).chooseOnBoard(
-      'card',
-      () => player.my('hand')!.all(Card, {playWhen: 'rollDice'}),
-    ).do(({card}) => {
-      game.followUp({name: card.actionName, args: {card}});
-    }),
+    // rollDiceCard: player => action({
+    //   prompt: `play a card before taking a die?`,
+    //   condition: player.my('hand')!.has(Card, {playWhen: 'rollDice'}),
+    // }).chooseOnBoard(
+    //   'card',
+    //   () => player.my('hand')!.all(Card, {playWhen: 'rollDice'}),
+    // ).do(({card}) => {
+    //   game.followUp({name: card.actionName, args: {card}});
+    // }),
 
-    takeDieCard: player => action({
-      prompt: `Play a card before moving on?`,
-      condition: player.my('hand')!.has(Card, {playWhen: 'takeDie'}),
-    }).chooseOnBoard(
-      'card', 
-      () => player.my('hand')!.all(Card, {playWhen: 'takeDie'}),
-    ).do(({card}) => {
-      game.followUp({name: card.actionName, args: {card}});
-    }),
+    // takeDieCard: player => action({
+    //   prompt: `Play a card before moving on?`,
+    //   condition: player.my('hand')!.has(Card, {playWhen: 'takeDie'}),
+    // }).chooseOnBoard(
+    //   'card', 
+    //   () => player.my('hand')!.all(Card, {playWhen: 'takeDie'}),
+    // ).do(({card}) => {
+    //   game.followUp({name: card.actionName, args: {card}});
+    // }),
 
-    constructionCard: player => action({
-      prompt: `Play a card for your turn?`,
-      condition: player.my('hand')!.has(Card, {playWhen: 'construction'}),
-    }).chooseOnBoard(
-      'card', 
-      () => player.my('hand')!.all(Card, {playWhen: 'construction'}).filter((c) => {
-        if (c.cardName === 'Radio') {
-          if (player.game.kaiju()!.my('hand')!.has(Block, 'wild')) {
-            return true;
-          } else { 
-            return false;
-          }
-        } else {
-          return true;
-        }
-      }),
-    ).do(({card}) => {
-      game.followUp({name: card.actionName, args: {card}});
-    }),
+    // STUB- this handled radio better by handlin it explicitly. 
+    // ... Don't want to clutter playCard - make a .condition property on cards?
+    // 
+    // constructionCard: player => action({
+    //   prompt: `Play a card for your turn?`,
+    //   condition: player.my('hand')!.has(Card, {playWhen: 'construction'}),
+    // }).chooseOnBoard(
+    //   'card', 
+    //   () => player.my('hand')!.all(Card, {playWhen: 'construction'}).filter((c) => {
+    //     if (c.cardName === 'Radio') {
+    //       if (player.game.kaiju()!.my('hand')!.has(Block, 'wild')) {
+    //         return true;
+    //       } else { 
+    //         return false;
+    //       }
+    //     } else {
+    //       return true;
+    //     }
+    //   }),
+    // ).do(({card}) => {
+    //   game.followUp({name: card.actionName, args: {card}});
+    // }),
 
-    actionCard: player => action({
-      prompt: `Play a card for your turn?`,
-      condition: player.my('hand')!.has(Card, {playWhen: 'action'}),
-    }).chooseOnBoard(
-      'card',
-      () => player.my('hand')!.all(Card, {playWhen: 'action'}),
-    ).do(({card}) => {
-      game.followUp({name: card.actionName, args: {card}});
-    }),
-
+    // actionCard: player => action({
+    //   prompt: `Play a card for your turn?`,
+    //   condition: player.my('hand')!.has(Card, {playWhen: 'action'}),
+    // }).chooseOnBoard(
+    //   'card',
+    //   () => player.my('hand')!.all(Card, {playWhen: 'action'}),
+    // ).do(({card}) => {
+    //   game.followUp({name: card.actionName, args: {card}});
+    // }),
 
     // Villager actions (construction & project completion)
 
@@ -796,20 +837,28 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       game.followUp({name: 'completeProjectDispatch', args: {block}, player});  // STUB: shoouldn't need explicit player?
     }),
 
+    // STUB: experimental, per issue #11. 
+    // see also issue #13. 
+    constructCard: player => action({
+      prompt: "or draw a card instead",
+      condition: player.my('hand')!.has(Block, 'wild') && player.assureDeck(),
+    }).chooseOnBoard(
+      'draw',
+      () => player.my('deck')!.lastN(1, Card),  // despite how we think of it, the "first" card in the deck is on the bottom. 
+    ).do(({draw}) => {
+      player.my('hand')!.first(Block, 'wild')!.putInto($.box);
+      draw.putInto(player.my('hand')!);
+    }),
+
     completeProjectDispatch: player => action<{ block: Block }>({
       prompt: `Complete a project`,
-      // condition: ({block}) => (block.floodMax().length >= 3 || block.floodWildMax().length >= 3),
     }).do(({block}) => {
-      // console.log(`in completeProjectDispatch with ${ block }`);
 
-      if (block.kind === 'wild' && block.floodWildMax().length >= 3) {
-        console.log('dispatch to completeProjectWild');
+      if (block.kind === 'wild' && block.floodWildMax().length >= game.projectSize) {
+        // console.log('dispatch to completeProjectWild');
         game.followUp({name: 'completeProjectWild', args: {block}});
-      // } else if (block.kind !== 'wild' && block.flood([]).length >= 3 && block.flood([]).length === block.floodMax().length) {
-      //   console.log('dispatch to completeProjectSimple');
-      //   game.followUp({name: 'completeProjectSimple', args: {block}});
-      } else if (block.kind !== 'wild' && block.floodMax().length >= 3) {
-        console.log('dispatch to completeProject');
+      } else if (block.kind !== 'wild' && block.floodMax().length >= game.projectSize) {
+        // console.log('dispatch to completeProject');
         game.followUp({name: 'completeProject', args: {block}});
       } else {
         // console.log(`no projects to complete with {{block}}.`);
@@ -834,32 +883,13 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       const flood = block.flood(consume);
       const loc = block.cell()!;
       const next = SankaiGame.goods[block.size()! + 1];
-      console.log(`${flood.length} including ${consume.length} wild, starting @ ${block.kind} ${'' + loc.row + ', ' + loc.column}: ${next} `, $.box.last(Block, {kind: next}));
+      // console.log(`${flood.length} including ${consume.length} wild, starting @ ${block.kind} ${'' + loc.row + ', ' + loc.column}: ${next} `, $.box.last(Block, {kind: next}));
       if (block && loc && next) {
         const structure = $.box.last(Block, {kind: next})!;
         structure.putInto(loc);
         flood.forEach((b) => b.putInto($.box));
-        console.log(`made ${structure}`)
-        game.followUp({name: 'completeProjectDispatch', args: {block: structure}});
-      }
-    }).message(
-      `{{player}} turned some {{block}}s into a {{structure}}`,
-      ({block}) => ({structure: SankaiGame.goods[block.size() + 1]}),
-    ),
-
-    completeProjectSimple: player => action<{block: Block}>({
-      prompt: `Complete a project`,
-      condition: ({block}) => { return (block.kind !== 'wild' && block.flood([]).length >= 3) },
-    }).do(({block}) => {
-      const flood = block.flood([]);
-      const loc = block.cell()!;
-      const next = SankaiGame.goods[block.size()! + 1];
-      console.log(`${flood.length} simple, starting with ${ block }: ${next} `, $.box.last(Block, {kind: next}));
-      if (block && loc && next) {
-        const structure = $.box.last(Block, {kind: next})!;
-        structure.putInto(loc);
-        flood.forEach((b) => b.putInto($.box));
-        console.log(`made ${structure}`)
+        // STUB per #11 trying draw reward
+        if (flood.length > game.projectSize) player.drawCard();
         game.followUp({name: 'completeProjectDispatch', args: {block: structure}});
       }
     }).message(
@@ -869,10 +899,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
     completeProjectWild: player => action<{block: Block}>({
       prompt: 'Complete a project, place this wild as: ',
-      condition: ({block}) => block.floodWildMax().length >= 3,
+      condition: ({block}) => block.floodWildMax().length >= game.projectSize,
     }).chooseFrom(
       'wildas',
-      ({block}) => block.floodWildOpts().filter((t) => block.floodMax(t).length >= 3),
+      ({block}) => block.floodWildOpts().filter((t) => block.floodMax(t).length >= game.projectSize),
     ).chooseOnBoard(
       'consume',
       ({block, wildas}) => block.floodMax(wildas).filter((b) => b.kind === 'wild'),
@@ -880,7 +910,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
         prompt: 'Which wild blocks do you wish to consume for this project?',
         validate: ({block, consume, wildas}) => {
           const flood = block.flood(consume, wildas);
-          return consume.includes(block) && flood.length >= 3 && consume.every((b) => flood.includes(b));
+          return consume.includes(block) && flood.length >= game.projectSize && consume.every((b) => flood.includes(b));
         },
         initial: ({block}) => [block],
       },
@@ -888,12 +918,12 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       const flood = block.flood(consume, wildas);
       const loc = block.cell()!;
       const next = SankaiGame.goods[SankaiGame.size(wildas)! + 1];
-      console.log("wild flood: ", block, wildas, consume, flood);
+      // console.log("wild flood: ", block, wildas, consume, flood);
       if (block && loc && next) {
         const structure = $.box.last(Block, {kind: next})!;
         structure.putInto(loc);
         flood.forEach((b) => b.putInto($.box));
-        console.log(`wild made ${ structure }`);
+        if (flood.length > game.projectSize) player.drawCard();
         game.followUp({name: 'completeProjectDispatch', args: {block: structure}});
       }
     }),
@@ -942,7 +972,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       radio.putInto(player.my('discard')!);
     }),
 
-    // is there a meaningful way to combine loadDecoy and feedBukibuki? they do similar things. 
+    // is there a meaningful way to combine loadDecoy and feedBukibuki? they do similar things.
     // also cleanDecoy and attackBukibuki
 
     loadDecoy: player => action({
@@ -951,6 +981,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                         && player.my('hand')!.has(Block, (hb) => 
          !player.my('Decoy')!.has(Block, (db) => db.kind === hb.kind )),
     }).chooseOnBoard(
+      'decoy', 
+      () => player.my('tableau')!.all(Card, 'Decoy'),
+      {skipIf: 'never'},
+    ).chooseOnBoard(
       'bait', 
       () => player.my('hand')!.all(Block, (hb) => !player.my('Decoy')!.has(Block, (db) => db.kind === hb.kind )),      
     ).do(({bait}) => {
@@ -960,12 +994,19 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
     feedBukibuki: player => action({
       prompt: 'Feed the beast',
       condition: () => !!game.bukibuki().card && player.my('hand')!.has(Block, (hb) => 
-         !game.bukibuki().card!.has(Block, (bb) => bb.kind === hb.kind )),
+          (hb.kind === 'wild' || hb.size() >= game.bukibuki().size!)
+          && !game.bukibuki().card!.has(Block, (bb) => bb.kind === hb.kind )),
     }).chooseOnBoard(
-      'food', 
-      () => player.my('hand')!.all(Block, (hb) => !game.bukibuki().card!.has(Block, (bb) => bb.kind === hb.kind )),      
-    ).do(({food}) => {
-      food.putInto(game.bukibuki().card!);
+      'buki', 
+      () => player.my('tableau')!.all(Card, 'Bukibuki'),
+      {skipIf: 'never'},
+    ).chooseOnBoard(
+      'food',
+      () => player.my('hand')!.all(Block, (hb) => 
+                  (hb.kind === 'wild' || hb.size() >= game.bukibuki().size!)
+                  && !game.bukibuki().card!.has(Block, (bb) => bb.kind === hb.kind )),
+    ).do(({buki, food}) => {
+      food.putInto(buki);
     }).message(`Bukibuki eats a {{ food.kind }} and feels stronger.`),
 
     moveBukibuki: player => action({
@@ -977,7 +1018,6 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
     ).do(({dest}) => {
       game.bukibuki().pawn!.putInto(dest);
     }).message(`Bukibuki moves toward Harapeko`),
-
 
     // Kaiju turns, basic actions
 
@@ -1010,20 +1050,28 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       player.hasActed = true;
     }),
 
-    eatCard: player => action({
-      prompt: "play eat card?",
-      condition: player.my('hand')!.has(Card, {playWhen: 'eat'}),
-    }).chooseOnBoard(
-      'card',
-      () => player.my('hand')!.all(Card, {playWhen: 'eat'}),
-      { skipIf: 'never'},
-    ).do(({card}) => {
+    eatAgain: player => action<{card: Card}>({
+      prompt: 'Nom nom nom',
+    }).do(({card}) => {
       player.hasActed = false;
-      game.followUp({player, name: card.actionName});
-      player.my('hand')!.first(Card, card)?.putInto(player.my('discard')!);
+      game.followUp({player, name: 'eat'});
+      card.putInto(player.my('discard')!);
     }),
 
-    // STUB TODO: not into or through Buki.
+    // eatCard: player => action({
+    //   prompt: "play eat card?",
+    //   condition: player.my('hand')!.has(Card, {playWhen: 'eat'}),
+    // }).chooseOnBoard(
+    //   'card',
+    //   () => player.my('hand')!.all(Card, {playWhen: 'eat'}),
+    //   { skipIf: 'never'},
+    // ).do(({card}) => {
+    //   player.hasActed = false;
+    //   game.followUp({player, name: card.actionName});
+    //   player.my('hand')!.first(Card, card)?.putInto(player.my('discard')!);
+    // }),
+
+    // STUB TODO: 
     // maybe as first step skipif always, second step?
     // done?  test
     move: player => action({
@@ -1056,17 +1104,16 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       ({loc}) => ({locString: `${loc.row}, ${loc.column}`})
     ),
 
-    moveCard: player => action({
-      prompt: "play move card?",
-      condition: player.my('hand')!.has(Card, {playWhen: 'move'}),
-    }).chooseOnBoard(
-      'card',
-      () => player.my('hand')!.all(Card, {playWhen: 'move'}),
-      { skipIf: 'never'},
-    ).do(({card}) => {
-      game.followUp({player, name: card.actionName});
-      player.my('hand')!.first(Card, card)?.putInto(player.my('discard')!);
-    }),
+    // moveCard: player => action({
+    //   prompt: "play move card?",
+    //   condition: player.my('hand')!.has(Card, {playWhen: 'move'}),
+    // }).chooseOnBoard(
+    //   'card',
+    //   () => player.my('hand')!.all(Card, {playWhen: 'move'}),
+    //   { skipIf: 'never'},
+    // ).do(({card}) => {
+    //   game.followUp({player, name: card.actionName, args: {card}});
+    // }),
 
     climb: player => action({
       prompt: 'Climb',
@@ -1099,7 +1146,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
     }).chooseOnBoard(
       'splash', 
       ({splashCandidates}) => splashCandidates,
-      {number: 2},
+      {number: game.projectSize - 1},
     ).do(({target, splash}) => {
       const here = target.cell()!;
 
@@ -1112,19 +1159,19 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       });
     }).message(`It was messy!`),
 
-    wreckCard: player => action({
-      prompt: "play wreck card?",
-      condition: player.my('hand')!.has(Card, {playWhen: 'wreck'}),
-    }).chooseOnBoard(
-      'card',
-      () => player.my('hand')!.all(Card, {playWhen: 'wreck'}),
-      { skipIf: 'never'},
-    ).do(({card}) => {
-      console.log(`{{player}} playing {{ card }}`);
-      player.hasActed = false;
-      game.followUp({player, name: card.actionName});
-      player.my('hand')!.first(Card, card)?.putInto(player.my('discard')!);
-    }),
+    // wreckCard: player => action({
+    //   prompt: "play wreck card?",
+    //   condition: player.my('hand')!.has(Card, {playWhen: 'wreck'}),
+    // }).chooseOnBoard(
+    //   'card',
+    //   () => player.my('hand')!.all(Card, {playWhen: 'wreck'}),
+    //   { skipIf: 'never'},
+    // ).do(({card}) => {
+    //   console.log(`{{player}} playing {{ card }}`);
+    //   player.hasActed = false;
+    //   game.followUp({player, name: card.actionName});
+    //   player.my('hand')!.first(Card, card)?.putInto(player.my('discard')!);
+    // }),
 
     rampageWreck: player => action({
       prompt: 'Harapeko smash!',
@@ -1200,7 +1247,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       prompt: "Is this the future Harapeko saw?",
       condition: () => player.my('tableau')!.has(Card, 'Laser Vision') 
                        && player.my('Laser Vision')!.has(SankaiDie)
-                       && $.tray.has(SankaiDie),
+                       && $.tray.has(SankaiDie, (d) => d.current !== player.my('Laser Vision')!.first(SankaiDie)!.current),
     }).chooseOnBoard(
       'fromLaser',
       () => player.my('Laser Vision')!.all(SankaiDie),
@@ -1220,7 +1267,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
     escapeTrap: player => action({
       prompt: 'Get out of the trap',
-      condition: player.my('hand')!.has(Block, {kind: 'wild'})
+      condition: !player.hasActed && player.my('hand')!.has(Block, {kind: 'wild'})
                 && player.pawn!.cell()!.has(Token, 'Trap') 
                 && player.pawn!.cell()!.adjacencies(Cell, {empty: true}).length > 0,
     }).chooseOnBoard(
@@ -1266,28 +1313,28 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
     // end of turn commonalities.
 
-    endTurnCard: player => action({
-      prompt: "Do you want to play a card?",
-      condition: player.my('hand')!.has(Card,{playWhen: 'endTurn'}),
-    }).chooseOnBoard(
-      'card',
-      () => player.my('hand')!.all(Card,{playWhen: 'endTurn'}),
-    ).do(({card}) => {
-      if (card.actionArgs) {
-        game.followUp({name: card.actionName, args: card.actionArgs});
-        // game.followUp({name: card.actionName, args: {...card.actionArgs}});
-      } else {
-        game.followUp({name: card.actionName});
-      }
-    }),
+    // endTurnCard: player => action({
+    //   prompt: "Do you want to play a card?",
+    //   condition: player.my('hand')!.has(Card,{playWhen: 'endTurn'}),
+    // }).chooseOnBoard(
+    //   'card',
+    //   () => player.my('hand')!.all(Card,{playWhen: 'endTurn'}),
+    // ).do(({card}) => {
+    //   if (card.actionArgs) {
+    //     game.followUp({name: card.actionName, args: card.actionArgs});
+    //     // game.followUp({name: card.actionName, args: {...card.actionArgs}});
+    //   } else {
+    //     game.followUp({name: card.actionName});
+    //   }
+    // }),
 
     // THE CARDS THEMSELVES CONTEND IN VAIN
 
-    dawn: player => action({
+    dawn: player => action<{card: Card}>({
       prompt: "At least that night is behind us...",
       condition: game.kaiju().my('tableau')!.all(Card).length > 1
                   || game.kaiju().my('hand')!.all(Card).length > 4,
-    }).do(() => {
+    }).do(({card}) => {
       const kaiju = game.kaiju();
       player.drawCard();
       kaiju.drawCard();
@@ -1303,6 +1350,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       // STUB make this a followUp so it happens in the right order?
       kaiju.my('tableau')!.all(Card).putInto(kaiju.my('discard')!);
       player.my('tableau')!.all(Card, 'Bukibuki').putInto(player.my('discard')!);
+      card.putInto(player.my('discard')!);
     }) ,
 
     initWarehouse: player => action<{card: Card}>({
@@ -1330,14 +1378,14 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       `{{ player }} opened a Warehouse`,
     ),
 
-    initDecoy: player => action({
+    initDecoy: player => action<{card: Card}>({
       prompt: 'A cunning plan',
     }).chooseOnBoard(
       'loc', 
       () => $.village.all(Cell, {empty: true}),
-    ).do(({loc}) => {
+    ).do(({loc, card}) => {
       game.first(Token, 'Decoy')!.putInto(loc);
-      player.my('hand')!.first(Card, 'Decoy')!.putInto(player.my('tableau')!);
+      card.putInto(player.my('tableau')!);
     }),
 
     initRadio: player => action<{card: Card}>({
@@ -1347,23 +1395,23 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       card.putInto(player.my('tableau')!);
     }),
 
-    initResearch: player => action({
+    initResearch: player => action<{card: Card}>({
       prompt: "We just need some time in the lab",
-    }).do(() => {
-      player.my('hand')!.first(Card, 'Research')!.putInto(player.my('tableau')!);
+    }).do(({card}) => {
+      card.putInto(player.my('tableau')!);
       // player.my('deck')!.first(Card).putInto(player.my('Research'));
       // player.my('Research').all(Card).showTo(player);
     }).message(`{{ player }}'s team is looking into it. They'll report back any progress.`),
 
     performResearch: player => action({
-      prompt: "Here's what we've got so far",
+      prompt: "Here's our best two ideas. Which approach should we abandon?",
       condition: player.my('tableau')!.has(Card, 'Research') && player.my('Research')!.all(Card).length > 1,
-    }).chooseOnBoard(
+    }).chooseFrom(
       'discard',
-      player.my('Research')!.all(Card),
-      {number: player.my('Research')!.all(Card).length - 1},
+      () => player.my('Research')!.all(Card).map((c) => ({label: c.cardName, choice: c})),
     ).do(({discard}) => {
-      discard.forEach((c) => c.putInto(player.my('discard')!));
+      discard.putInto(player.my('discard')!);
+      player.my('Research')?.all(Card).hideFromAll();
     }).message(`{{ player }} has directed the research team.`),
 
     collectResearch: player => action({
@@ -1379,12 +1427,20 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       player.my('tableau')!.all(Card, 'Research').putInto(player.my('discard')!);
     }).message(`The scientists have made their final report.`) ,
 
-    militaryInvolvement: player => action<{strength?: number}>({
+    militaryInvolvement: player => action<{strength?: number, card: Card}>({
       prompt: "We're from the government, and we're here to help.",
-    }).do(({strength}) => {
+    }).do(({strength, card}) => {
       console.log (`Kaiju currently ${ game.kaiju().size() } (${ game.kaiju().appetite() }), received strength: ${ strength }`);
+
+      if ($.tray.all(SankaiDie).length > 0 && ! (strength ?? 0)) {
+        console.log("seting aside ", $.tray.all(SankaiDie));
+        $.tray.all(SankaiDie).putInto(player.my('discard')!);
+      }
+
       strength ??= game.kaiju().size();
-      game.message(`The military has shown up to help. They attack Harapeko ${ strength } times.`);
+      if ($.tray.all(SankaiDie).length === 0) {
+        game.message(`The military has shown up to help. They attack Harapeko ${ strength } times.`);
+      }
 
       while ($.tray.all(SankaiDie).length < strength) {
         const die = $.box.last(SankaiDie)!;
@@ -1393,18 +1449,22 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
         console.log(`die #${ $.tray.all(SankaiDie).length } ${ die.current } (${ die.face() })`)
         if (die.current === 6) {
           console.log("draw & queue discard");
+          game.message('Harapeko appears to grow sronger!');
           game.kaiju().drawCard();
           game.kaiju().drawCard();
           game.followUp({name: 'discard', player: game.kaiju(), args: {discard: 1}});
-          game.followUp({name: 'militaryInvolvement', args: {strength}});
-          break;
+          game.followUp({name: 'militaryInvolvement', player, args: {strength, card}});
+          // break;
+          return;
         } else if (die.current === 5) {
           console.log("both draw");
+          game.message('Lessons are learned on all sides.');
           game.players.forEach((p) => p.drawCard());
         } else {
           console.log("shots fired");
           if (die.current > game.kaiju().size()) {
             console.log("hit kaiju...");
+            game.message('Harapeko is hit!');
             $.appetiteTrack.last(Block)?.putInto($.box);
             console.log (`Kaiju now ${ game.kaiju().size() } (${ game.kaiju().appetite() })`);
           }
@@ -1415,9 +1475,11 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                   b.kind === die.face() 
                   && game.kaiju()!.pawn!.cell()!.reaches(b))) {
               console.log("catching strays");
+              game.message('Stray shots wreak havoc on the streets of Haraku.');
               game.followUp({name: 'militaryWreck', player, args: {kind: die.face()}});
-              game.followUp({name: 'militaryInvolvement', args: {strength}});
-              break;
+              game.followUp({name: 'militaryInvolvement', player, args: {strength, card}});
+              // break;
+              return;
             }
           }
         }
@@ -1427,7 +1489,18 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       if ($.tray.all(SankaiDie).length >= strength) {
         console.log('Our work here is done.');
         $.tray.all(SankaiDie).putInto($.box);
-        player.my('hand')!.first(Card, 'Military Involvement')?.putInto(player.my('discard')!);
+        if (player.my('discard')!.all(SankaiDie).length > 0) {
+          const dice = player.my('discard')!.all(SankaiDie);
+          const values = dice.map(d => d.current);
+          console.log(dice, " should become ", values);
+          dice.putInto($.tray);
+          for (const d of dice) {
+            d.current = values.pop()!;
+          }
+          console.log("and have become ", dice);
+        }
+        card.putInto(player.my('discard')!);
+        game.message('Unsure what to do next, the military leave to regroup.')
       } else {
         console.log(`taking a break with ${ $.tray.all(SankaiDie).length } in tray.`);
       }
@@ -1443,7 +1516,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       const wreckage = target.getWrecked();
     }),
 
-    initBukibuki: player => action({
+    initBukibuki: player => action<{card: Card}>({
       prompt: 'A challenger approaches!',
     }).chooseOnBoard(
       'loc', 
@@ -1454,13 +1527,12 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
           return $.village.all(Cell, {empty: true});          
         }
       }
-    ).do(({loc}) => {
+    ).do(({card, loc}) => {
       $.box.all(Token, 'Bukibuki').putInto(loc);
-      const bukicard = player.my('hand')!.first(Card, 'Bukibuki')!;
-      bukicard.putInto(player.my('tableau')!);
-      $.box.last(Block, 'lumber')!.putInto(bukicard);
-      $.box.last(Block, 'wall')!.putInto(bukicard);
-      // $.box.last(Block, 'room')!.putInto(bukicard);  // Buki was too strong. this might not be enough.
+      card.putInto(player.my('tableau')!);
+      $.box.last(Block, 'lumber')!.putInto(card);
+      $.box.last(Block, 'wall')!.putInto(card);
+      // $.box.last(Block, 'room')!.putInto(card);  // Buki was too strong. this might not be enough.
     }),
 
     supplies: player => action<{card: Card}>({
@@ -1477,10 +1549,8 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       const block = $.box.last(Block, { kind: card.actionArgs!.kind as BlockType })!;
 
       if (choice === 'extra') {
-        // console.log(`supplies: executing extra`)
         player.game.kaiju()!.drawCard();
       } else {
-        // console.log(`supplies: executing replace with "${ choice }"`)
         player.my('hand')!.first(Block)?.putInto($.box);
       }
 
@@ -1488,18 +1558,20 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       card.putInto(player.my('discard')!);
     }),
 
-    trap: player => action({
+    trap: player => action<{card: Card}>({
       prompt: 'Trap Harapeko',
       condition: game.kaiju().pawn!.isAlone(),
-    }).do(({}) => {
+    }).do(({card}) => {
       const theCell = game.kaiju().pawn!.cell()!;
       game.first(Token, 'Trap')!.putInto(theCell);
+      card.putInto(player.my('tableau')!);              // STUB: should this go to the tableu even though it does nothing?
     }).message(
       `It was a trap! Harapeko has fallen into a hole!`
     ),
 
-    winch: player => action({
+    winch: player => action<{card: Card}>({
       prompt: 'That would look better over here',
+      condition: ({card}) => player.my('hand')!.has(card),
     }).chooseOnBoard(
       'target',
       () => [... $.village.all(Block, (b) => b.isAlone()), 
@@ -1507,20 +1579,20 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
     ).chooseOnBoard(
       'dest',
       ({target}) => target.cell()!.adjacencies(Cell, {empty: true}),
-    ).do(({target, dest}) => {
+    ).do(({card, target, dest}) => {
       target.putInto(dest);
-      player.my('hand')!.first(Card, 'Winch')!.putInto(player.my('discard')!);
+      card.putInto(player.my('discard')!);
     }).message(
       `{{player}} moves the {{target}} into a new home.`
     ) ,
 
     urge: player => action<{card: Card}>({
       prompt: `Choose a die to fix.`,
-      // condition: $.tray.has(SankaiDie, (d) => d.face() !== card.actionArgs!.kind),
+      condition: ({card}) => $.tray.has(SankaiDie, (d) => d.face() !== card.actionArgs!.kind),
     }).chooseOnBoard(
       'target',
       ({card}) => $.tray.all(SankaiDie, (d) => d.face() !== card.actionArgs!.kind),
-    ).do(({target, card}) => {
+    ).do(({card, target}) => {
       const kind = card.actionArgs!.kind as BlockType;
       target.current = SankaiGame.size(kind)! + 1;
       card.putInto(player.my('discard')!);
@@ -1528,27 +1600,28 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
     entwinedFates: player => action<{card: Card}>({
       prompt: `Choose a die to copy.`,
+      condition: $.tray.all(SankaiDie).map((d) => d.current).filter((v,i,a) => i === a.indexOf(v)).length > 1,
     }).chooseOnBoard(
       'target',
       () => $.tray.all(SankaiDie),
-    ).do(({target, card}) => {
+    ).do(({card, target}) => {
       $.tray.all(SankaiDie).forEach((d) => d.current = target.current);
       card.putInto(player.my('discard')!);
     }),
 
-    earthquake: player => action({
+    earthquake: player => action<{card: Card}>({
       prompt: "It's an earthshaker!",
       condition: () => $.village.has(Block, (b) => b.size() > 0),
     }).chooseOnBoard(
       'target',
       () => $.village.all(Block, (b) => b.size() > 0),
-    ).do(({target}) => {
+    ).do(({card, target}) => {
       const loc = target.cell()!;
       const wreckage = target.getWrecked();
-      game.followUp({name: 'earthquakeII', args: {loc}});
+      game.followUp({name: 'earthquakeII', args: {loc, card}});
     }),
 
-    earthquakeII: player => action<{loc: Cell}>({
+    earthquakeII: player => action<{loc: Cell, card: Card}>({
       prompt: "Still shaking",
     }).chooseFrom(
       'fault',
@@ -1573,7 +1646,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       //   label: 'West', 
       //   choice: {row: 0, column: -1}
       // }],
-    ).do( ({loc, fault, direction}) => {
+    ).do( ({card, loc, fault, direction}) => {
       const faultZone = $.village.all(Cell, 'nonesuch');
       console.log('got ', faultZone);
 
@@ -1606,8 +1679,8 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
           console.log(`panic!  bad direction: ${direction}`);
         }
 
-        theRow    = Math.max(1, Math.min(6, theRow));
-        theColumn = Math.max(1, Math.min(6, theColumn));
+        theRow    = Math.max(1, Math.min(game.boardSize, theRow));
+        theColumn = Math.max(1, Math.min(game.boardSize, theColumn));
 
         const there = $.village.first(Cell, (
           {
@@ -1624,10 +1697,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
         }
       });
 
-      player.my('hand')!.first(Card, 'Earthquake')?.putInto(player.my('discard')!);
+      card.putInto(player.my('discard')!);
     }),
 
-    evolve: player => action({
+    evolve: player => action<{card: Card}>({
       prompt: "This isn't even my final form",      
     }).do(() => {
       const oldHand = player.my('hand')!.all(Card);
@@ -1637,58 +1710,60 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       player.shuffleDiscards();
     }) ,
 
-    initLaser: player => action({
+    initLaser: player => action<{card: Card}>({
       prompt: 'Incandescent with rage',
       condition: player.my('hand')!.has(Card, 'Laser Vision'),
-    }).do(({}) => {
-      player.my(Card, 'Laser Vision')!.putInto(player.my('tableau')!);
+    }).do(({card}) => {
+      card.putInto(player.my('tableau')!);
       $.box.last(SankaiDie)!.putInto($.tray);
       $.tray.last(SankaiDie)!.putInto(player.my('Laser Vision')!);
     }),
 
-    initSpeed: player => action({
+    initSpeed: player => action<{card: Card}>({
       prompt: 'get your hustle on',
       condition: player.my('hand')!.has(Card, 'Lightning Speed'),
-    }).do(({}) => {
-      player.my(Card, 'Lightning Speed')!.putInto(player.my('tableau')!);
+    }).do(({card}) => {
+      card.putInto(player.my('tableau')!);
     }),
 
-    initRampage: player => action({
+    initRampage: player => action<{card: Card}>({
       prompt: 'destroy everything',
       condition: player.my('hand')!.has(Card, 'Rampage'),
-    }).do(({}) => {
-      player.my(Card, 'Rampage')!.putInto(player.my('tableau')!);
+    }).do(({card}) => {
+      card.putInto(player.my('tableau')!);
     }),
 
-    jumpStomp: player => action({
+    jumpStomp: player => action<{card: Card}>({
       prompt: "into the ground!",
     }).chooseOnBoard(
       'target',
       () => [...player.pawn!.cell()!.all(Block), ...player.climbableBlocks()],
       {skipIf: 'never'},
-    ).do(({target}) => {
+    ).do(({card, target}) => {
       player.pawn!.putInto(target.cell()!);
       target.getWrecked();
-      player.hasActed = true;
+      player.hasActed = true;               // STUB: not needed?
+      card.putInto(player.my('discard')!);
     }),
 
-    storm: player => action({
+    storm: player => action<{card: Card}>({
       prompt: "The Storm is coming",
       condition: player.my('hand')!.has(Card, {cardName: 'Storm'}),
-    }).do(() => {
+    }).do(({card}) => {
       game.players.sortBy('role', 'asc');
-      player.my('hand')!.first(Card, {cardName: 'Storm'})!.putInto(player.my('discard')!);
+      card.putInto(player.my('discard')!);
     }),
 
-    tunnel: player => action({
+    tunnel: player => action<{card: Card}>({
       prompt: "Nothing can stop me now",
+      condition: player.my('hand')!.has(Card, {cardName: 'Tunnel'}),  // is this a waste of time?
     }).chooseOnBoard(
       'dest', 
       () => $.village.all(Cell, (c) => ! c.has(Piece)),
       { skipIf: 'never' },
-    ).do(({dest}) => {
+    ).do(({dest, card}) => {
       player.pawn!.putInto(dest);
-      player.my('hand')!.first(Card, 'Tunnel')?.putInto(player.my('discard')!);
+      card.putInto(player.my('discard')!);
     }),
 
   });
@@ -1743,35 +1818,40 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
 
   game.defineFlow(
     () => game.assignRoles(),      // in the future, ?make an interface where people can pick?
-
     playerActions({ player: () => game.villager(), actions: ['initVillage'], }),
-
-    // maybe not needed? Kaiju just goes in the remaining corner, currently.
     playerActions({ player: () => game.kaiju(), actions: ['initKaiju'], }),
 
     loop(
-      () => game.players.sortBy('role', 'asc'),
-
       // Dice
       () => game.rollDice(),
-      eachPlayer({name: 'player', do: playerActions({actions: ['rollDiceCard', 'swapLaser'], optional: 'pass'})}),
-      ifElse({  if: () => game.kaiju().pawn!.cell()!.has(Token, 'Trap'),
-                do: () => game.players.sortBy('role', 'desc'),
+      eachPlayer({name: 'player', do: playerActions({actions: [{
+                                                        name: 'playCard',
+                                                        args: {playWhen: 'rollDice'},
+                                                      }, 'swapLaser'], optional: 'pass'})}),
+
+      ifElse({  if:   () => game.kaiju().pawn!.cell()!.has(Token, 'Trap'),
+                do:   () => game.players.sortBy('role', 'desc'),
+                else: () => game.players.sortBy('role', 'asc'),
       }),
+
       eachPlayer({name: 'player', do: playerActions({actions: ['takeDie']})}),
+
       () => game.players.sortBy('role', 'desc'),
-      eachPlayer({name: 'player', do: playerActions({actions: ['takeDieCard'], optional: 'pass'})}),
+
+      eachPlayer({name: 'player', do: playerActions({actions: [{
+        name: 'playCard',
+        args: {playWhen: 'takeDie'},
+      }], optional: 'pass'})}),
 
       bukiBehavior,
 
       () => game.cleanUpDice(),
 
       // Actions
-
       eachPlayer({
         name: 'player',
         do: [
-          // magic!  the console.log makes the game work. 
+          // STUB magic!  the console.log makes the game work. 
           () => console.log("from list: ", game.players),
           () => console.log("currently: ", game.players.current()),
           ifElse ({
@@ -1805,7 +1885,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                 do: [
                   playerActions({
                     player: () => game.villager(),
-                    actions: ['warehouse', 'restockWarehouse', 'radio', 'constructionCard'],
+                    actions: ['warehouse', 'restockWarehouse', 'radio',
+                      { name: 'playCard',
+                        args: {playWhen: 'construction'},
+                      }],
                     optional: 'Pass',
                   }),
                 ],
@@ -1815,7 +1898,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                 while: () => game.villager()!.my('hand')!.has(Block),
                 do: playerActions({
                   player: () => game.villager(),
-                  actions: ['construction', 'warehouse', 'restockWarehouse', 'radio', 'constructionCard', 'feedBukibuki', 'loadDecoy', 'collectResearch'],
+                  actions: ['construction', 'constructCard', 'warehouse', 'restockWarehouse', 'radio', 'feedBukibuki', 'loadDecoy', 'collectResearch',
+                            { name: 'playCard',
+                              args: {playWhen: 'construction'},
+                            }],
                 }),
               }),
             ],
@@ -1838,7 +1924,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                       do: ifElse ({ if: () => game.kaiju().my('hand')!.has(Card, {playWhen: 'eat'}),
                                     do: playerActions({
                                           player: () => game.kaiju(),
-                                          actions: ['eatCard'],
+                                          actions: [{
+                                            name: 'playCard',
+                                            args: {playWhen: 'eat'},
+                                          }],
                                           optional: 'Pass',
                                         })}),
                     },
@@ -1846,7 +1935,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                       do: ifElse ({ if: () => game.villager().my('hand')!.has(Card, {playWhen: 'move'}),
                         do: playerActions ({
                           player: () => game.villager(),
-                          actions: ['moveCard'],
+                          actions: [{
+                            name: 'playCard',
+                            args: {playWhen: 'move'},
+                          }],
                           optional: 'Pass',
                         }),
                       }),
@@ -1858,14 +1950,19 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                                     do: [ () => console.log(`{{player}} option to play wreck card`),
                                       playerActions({
                                         player: () => game.kaiju(),
-                                        actions: ['wreckCard'],
+                                        actions: [{
+                                          name: 'playCard',
+                                          args: {playWhen: 'wreck'},
+                                        }],
                                         optional: 'Pass',
                                       })],
                                     else: () => console.log("no wreckerd in ", game.kaiju().my('hand')),
                                   }),
                             ],
                     },
-                    'actionCard',
+                    { name: 'playCard',
+                      args: {playWhen: 'action'},
+                    },
                     'escapeTrap',
                     'attackBukibuki',
                     'cleanDecoy', 
@@ -1887,7 +1984,10 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
         name: 'player',
         do: loop(
           playerActions({
-            actions: ['endTurn', 'dismissOngoing', 'endTurnCard'],
+            actions: ['endTurn', 'dismissOngoing', 
+            { name: 'playCard',
+              args: {playWhen: 'endTurn'},
+            }],
           }),
         ),
       }),

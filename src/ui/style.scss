@@ -1,4 +1,4 @@
-#play-area {
+/*#play-area {*/
   .Block {
     font-size: 400%;
     font-weight: 729;
@@ -29,12 +29,12 @@
     background-color: orchid;
   }
 
-  .Block.selected {
-    border-color: .1em orange;
-  }
-
   .Block.selectable {
     border: .1em gold;
+  }
+
+  .Block.selected {
+    border-color: .1em orange;
   }
 
   .Block.selectable:hover {
@@ -136,6 +136,10 @@
   .KaijuCard > div {
     border: solid .1em #eee;
     border-radius: .25em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .VillageCard.selectable > div,
@@ -175,5 +179,21 @@
     box-shadow: 0 0 0.2rem orange;
   }
 
-}
+  .selected > * {
+    border: solid green 0.1rem;
+    box-shadow: 0 0 0.2rem gold;
+  }
+
+
+  .VillageCard .printed.Block, 
+  .KaijuCard .printed.Block {    
+    width: 35%;
+    height: 25%;
+    font-size: 150%;
+    display: block;
+    text-align: center;
+    opacity: 75%;
+  }
+
+/*}*/
 

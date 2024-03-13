@@ -189,7 +189,7 @@ render(setup, {
 
     game.all('appetiteTrack').layout(Block, {
       rows: 4, 
-      columns: 4,
+      columns: game.kaijuAppetiteSize,
       gap: 2, 
       margin: 2,
     });
@@ -253,37 +253,58 @@ render(setup, {
       gap: .25,
     });
 
+    game.all(Card, 'Research').layout(Card, {
+      area: {left: 20, top: 20, width: 80, height: 80},
+      rows: {max: 1},
+      offsetColumn: {x:2, y:20},
+    });
+
+
     game.all(Card).appearance({
       aspectRatio: 5/7,
     });
 
-    game.all(KaijuCard).appearance({
+    game.all(Card).appearance({
       render: (c) => {
+        const illus = c.actionArgs?.kind ? 
+            <div className="printed Block" data-kind={ c.actionArgs!.kind }>
+              { c.actionArgs!.kind!.at(0)!.toUpperCase() }
+            </div>
+            : '';
         if (c.isVisible()) { return (
           <div className="front">
             <span className="title">{ c.cardName }</span>
+{/*            <div className="cardText">
+              {c.flavorText}
+            </div>
+*/}            { illus }
           </div>
         )} else { return (
           <div className="back">
-            <span> 👹 </span>
+            <span> { c instanceof KaijuCard ? '👹' : '⛩️' } </span>
           </div>
         )}
-      }
+      }, 
+      info: (c) => 
+        <div>
+          <span> { c.flavorText } </span>
+          { c.description }
+        </div>
     })
 
-    game.all(VillageCard).appearance({
-      render: (c) => {
-        if (c.isVisible()) { return (
-          <div className="front">
-            <span className="title">{ c.cardName }</span>
-          </div>
-        )} else { return (
-          <div className="back">
-            <span> ⛩️ </span>
-          </div>
-        )}
-      }
-    })
+    // game.all(VillageCard).appearance({
+    //   render: (c) => {
+    //     if (c.isVisible()) { return (
+    //       <div className="front">
+    //         <span className="title">{ c.cardName }</span>
+    //       </div>
+    //     )} else { return (
+    //       <div className="back">
+    //         <span> ⛩️ </span>
+    //       </div>
+    //     )}
+    //   }
+    // })
 
     game.all(Block).appearance({
       aspectRatio: 1,
