@@ -13,7 +13,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     may put a block into it; if you have no block, you may take the block from it.
         `,
 }, {
-    // was having trouble accidentally discarding the three token event cards instead of keepng them. 
+    // was having trouble accidentally discarding the three token event cards instead of keepng them.
     // i think that's fixed but keep an eye on it. Also test leaving a Radio on it.
     cardName: 'Research',
     playWhen: 'construction',
@@ -57,9 +57,9 @@ export const villageCards: Partial<VillageCard>[] = [{
     actionName: 'trap',
     flavorText: 'Catch Harapeko in a trap',
     addDice: 1,
-    description: 
-        `Play this card when Harapeko has moved into an empty square. They fall into a hole, from which 
-        they cannot walk out. They may climb adjacent structures normally, or use a wild block to climb 
+    description:
+        `Play this card when Harapeko has moved into an empty square. They fall into a hole, from which
+        they cannot walk out. They may climb adjacent structures normally, or use a wild block to climb
         out into an adjacent empty space. Of course, they can also escape by tunbel or earthquake.`,
     // pawn: () => $.box.first(Token, 'Trap'),
 }, {

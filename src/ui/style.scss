@@ -1,4 +1,17 @@
 /*#play-area {*/
+
+#box * {
+  text-align: center;
+}
+
+h1.banner {
+  margin: .25em;
+}
+
+h1 + span {
+  margin: .5em;
+}
+
   .Block {
     font-size: 400%;
     font-weight: 729;

@@ -94,6 +94,13 @@ render(setup, {
       ,
     });
 
+    game.all(Space, 'box').layout(Card, {
+      area: {left: 75, top: 5, width: 50, height: 70},
+      rows: 1,
+      haphazardly: 5,
+      offsetColumn: {x: 10, y: 14},
+    });
+
     game.all(Space, 'box').layout(SankaiDie, {
       area: {left: 125, top: 5, width: 75, height: 40},
       rows: 1,
