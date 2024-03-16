@@ -197,14 +197,15 @@ render(setup, {
     game.all('appetiteTrack').layout(Block, {
       rows: 4, 
       columns: game.kaijuAppetiteSize,
-      gap: 2, 
-      margin: 2,
+      gap: 1, 
+      margin: 1,
     });
 
     game.all('tray').layout(SankaiDie, {
       gap: 2, 
       margin: 2,
-      haphazardly: 5,
+      haphazardly: 10,
+      sticky: true,
       alignment: 'center',
     });
 

@@ -140,8 +140,8 @@ class SankaiGame extends Game<SankaiPlayer, SankaiGame> {
   phase: number = 1;
 
   readonly boardSize = 6;
-  readonly projectSize = 3;
-  readonly kaijuAppetiteSize = 4;
+  readonly projectSize = 4;
+  readonly kaijuAppetiteSize = 6;
 
 
   static goods: BlockType[] = ['lumber', 'wall', 'room', 'building', 'tower', 'fortress'];
@@ -237,14 +237,14 @@ export class Cell extends Space {
     return ([1, this.game.boardSize].includes(this.row) && [1, this.game.boardSize].includes(this.column));
   }
 
-  hasStructure() {
-    return this.has(Block, (b) => !!SankaiGame.size(b.kind));
-  }
+  // hasStructure() {
+  //   return this.has(Block, (b) => !!SankaiGame.size(b.kind));
+  // }
 
   height(): number {
     return (
-      this.has(Block) 
-        ? Math.max(...this.all(Block).map(b => b.size()))
+      this.has(Block)
+        ? Math.max(...this.all(Block).map(b => b.size())) + 1
         : (this.has(Token, 'Trap')
           ? -1 
           :  0)
@@ -260,7 +260,7 @@ export class Cell extends Space {
           a.height() <= c.height()
           && !departures.includes(a)
           && !a.has(Token)
-        )).filter((v,i,a) => a.indexOf(v) === i);
+        )).filter(unique);
       arrivals.push(...freshSteps);
       departures.push(...freshSteps);
     }
@@ -299,6 +299,10 @@ export class Cell extends Space {
 export class SankaiDie extends Die {
   static faces = ['lumber', 'wall', 'room', 'building', 'card', 'wild'];
   face () {
+    if (this.current === 4) { 
+      return this.game.kaiju()!.appetite()!;
+    }
+
     return SankaiDie.faces[-1 + this.current];
   }
 
@@ -676,6 +680,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       },
     ).do(({keep, where}) => {
       keep.putInto(player.my('hand')!);
+      player.my('deck')!.first(Card)!.hideFromAll();
       player.my('deck')!.first(Card)!.putInto(player.my('deck')!, {position: where});
     }),
 
