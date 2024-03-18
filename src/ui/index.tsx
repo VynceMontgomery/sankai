@@ -127,10 +127,10 @@ render(setup, {
       haphazardly: 5,
     });
 
-    game.all(Space, 'box').layout($.box.all(Block, {kind: 'building'}), {
-      area: {left: -100, top: 55, width: 20, height: 40},
-      haphazardly: 5,
-    });
+    // game.all(Space, 'box').layout($.box.all(Block, {kind: 'building'}), {
+    //   area: {left: -100, top: 55, width: 20, height: 40},
+    //   haphazardly: 5,
+    // });
 
     game.all(Space, 'box').layout($.box.all(Block, {kind: 'tower'}), {
       area: {left: -75, top: 55, width: 20, height: 40},

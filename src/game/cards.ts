@@ -19,6 +19,7 @@ export const villageCards: Partial<VillageCard>[] = [{
     playWhen: 'construction',
     actionName: 'initResearch',
     flavorText: 'Our scientists are working on a plan.',
+    forceShuffle: true,
     description:
         `Play this card into your tableau. Each turn after that, put cards from your deck 
     onto this until it has 2 cards, then discard one of them. On any future turn, put the 
@@ -187,16 +188,16 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     description: `
         Play this card after rolling dice but before choosing. Set any die to the indicated face.
     `,
-}, {
-    cardName: 'Urge: Building',
-    playWhen: 'rollDice',
-    canPlay: (player) => $.tray.has(SankaiDie, (d) => d.face() !== 'building'),
-    actionName: 'urge',
-    actionArgs: {kind: 'building'},
-    flavorText: "B is for Building, that's good enough for me!",
-    description: `
-        Play this card after rolling dice but before choosing. Set any die to the indicated face.
-    `,
+// }, {
+//     cardName: 'Urge: Building',
+//     playWhen: 'rollDice',
+//     canPlay: (player) => $.tray.has(SankaiDie, (d) => d.face() !== 'building'),
+//     actionName: 'urge',
+//     actionArgs: {kind: 'building'},
+//     flavorText: "B is for Building, that's good enough for me!",
+//     description: `
+//         Play this card after rolling dice but before choosing. Set any die to the indicated face.
+//     `,
 }, {
     // looks good
     cardName: 'Entwined Fates',
