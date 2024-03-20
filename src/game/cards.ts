@@ -252,6 +252,7 @@ export const kaijuCards: Partial<KaijuCard>[] = [{
     // looks good
     cardName: 'Jump Stomp',
     playWhen: 'wreck',
+    canPlay: (player) => player.pawn!.cell()!.has(Block) || player.climbableBlocks().length > 0,
     actionName: 'jumpStomp',
     flavorText: "Mario would be proud",
 }, {
