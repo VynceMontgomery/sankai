@@ -760,7 +760,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
     endTurn: player => action({
       prompt: "End Turn",
     }).do(() => {
-      console.log(`ending turn for ${ player }`);
+      // console.log(`ending turn for ${ player }`);
       player.my('hand')!.all(Block).putInto($.box);
       const radio = player.my('tableau')!.first(Card, 'Radio');
       if (radio && !radio.has(Block)) {
@@ -1115,7 +1115,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       `Harapeko climbs the {{target}}`,
     ),
 
-    wreck: player => action<{targets: Block[]}>({
+    wreck: player => action<{targets: Block[], move?: boolean}>({
       prompt: "Things fall apart",
       condition: ({targets}) => [console.log('grr', targets), true].length > 0,
       // condition: targets ?? !player.hasActed && !player.isLured() && player.wreckableBlocks().length > 0,
@@ -1128,7 +1128,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       'splashZone',
       ({target}) => {
         if (target.length > 0 && !!target[0].size()) {
-          console.log(`grah: ${ target[0] }: `, target[0].splashCandidates());
+          // console.log(`grah: ${ target[0] }: `, target[0].splashCandidates());
           return target[0].splashCandidates();
         } else {
           return [];
@@ -1137,7 +1137,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       { number: ({target}) => {
           if (target.length > 0 && !!target[0].size()) {
             const sc = target[0].splashCandidates();
-            console.log(`grumpf: ${ target[0] } has ${ sc.length } so ${ Math.min(game.projectSize - 1, sc.length) }`);
+            // console.log(`grumpf: ${ target[0] } has ${ sc.length } so ${ Math.min(game.projectSize - 1, sc.length) }`);
             return Math.min(game.projectSize - 1, sc.length);
           } else {
             return 0;
@@ -1146,8 +1146,9 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
         prompt: 'Select the nearby locations where debris lands.',
       },
       // }, skipIf: 'never'},
-    ).do(({target, targets, splashZone}) => {
-      console.log(`insane: ${ target[0] } and ${ splashZone.length }`);
+    ).do(({target, targets, splashZone, move, }) => {
+      // console.log(`insane: ${ target[0] } and ${ splashZone.length }`);
+      if ((move ?? false) && !!player.pawn) { player.pawn!.putInto(target[0].cell()!) }
       for (const t of target) {
         t.getWrecked(splashZone);
       }
@@ -1366,7 +1367,8 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
       prompt: "We just need some time in the lab",
     }).do(({card}) => {
       card.putInto(player.my('tableau')!);
-      const tech= player.my('deck')!.firstN(1, Card);
+      player.assureDeck();
+      const tech = player.my('deck')!.firstN(1, Card);
       tech.putInto(card);
       tech.showTo(player);
       const msg = `Researchers are working on: ${ tech[0].cardName }`;
@@ -1693,6 +1695,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
     }).do(({card}) => {
       game.followUp({name: 'wreck', player, args: {
         targets: [...player.pawn!.cell()!.all(Block), ...player.climbableBlocks()],
+        move: true,
       }});
       card.putInto(player.my('discard')!);
     }),
@@ -1821,7 +1824,8 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
                     const v = game.villager();
                     const research = v.my('Research')!;
                     const found = () => research.all(Card);
-                    while (found().length < 2) {
+                    game.villager().assureDeck();
+                    while (found().length < 2 && v.my('deck')!.has(Card)) {
                       v.my('deck')!.first(Card)!.putInto(research);
                     }
                     found().showTo(v);
@@ -1945,6 +1949,7 @@ export default createGame(SankaiPlayer, SankaiGame, game => {
         name: 'player',
         do: loop(
           playerActions({
+            player: ({player}) => player,
             actions: [
               'dismissOngoing',
               { name: 'playCard',
